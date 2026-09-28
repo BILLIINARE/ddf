@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AutoCut 자동 편집기</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%228%22 fill=%22%2320d5c4%22/%3E%3Cpath d=%22M12 9l12 7-12 7z%22 fill=%22%23000%22/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="logo" href="#" id="homeLink"><span class="logo-mark">▶</span> AutoCut</a>
+  <div class="topbar-title" id="projectTitle"></div>
+  <div class="topbar-actions" id="topActions"></div>
+</header>
+
+<!-- ======================= HOME ======================= -->
+<main id="homeView" class="view">
+  <section class="hero">
+    <h1>영상만 넣으면 <em>컷 편집 · 자막 · 효과</em>까지 자동으로</h1>
+    <p>무음·"음/어" 구간을 잘라내고, 음성을 인식해 자막을 달고, 줌·색보정·배경음악까지 한 번에.</p>
+  </section>
+
+  <section class="upload-card">
+    <label class="dropzone" id="dropzone">
+      <input type="file" id="fileInput" accept="video/*" hidden>
+      <div class="dz-icon">＋</div>
+      <div class="dz-title">영상을 끌어다 놓거나 클릭해서 선택</div>
+      <div class="dz-sub" id="dzFile">MP4 · MOV · WEBM 등</div>
+    </label>
+
+    <div class="field-label">편집 스타일</div>
+    <div class="preset-grid" id="presetGrid"></div>
+
+    <div class="upload-options">
+      <label class="field"><span>상단 제목 (선택)</span>
+        <input type="text" id="titleInput" placeholder="예: 자취생 5분 요리 🍳" maxlength="40"></label>
+      <label class="field"><span>배경음악 (선택)</span>
+        <input type="file" id="bgmInput" accept="audio/*"></label>
+      <label class="field"><span>언어</span>
+        <select id="langInput">
+          <option value="ko">한국어</option><option value="en">English</option>
+          <option value="ja">日本語</option><option value="auto">자동 감지</option>
+        </select></label>
+      <label class="check"><input type="checkbox" id="autoRenderInput" checked>
+        분석이 끝나면 바로 완성본까지 렌더링</label>
+    </div>
+    <button class="btn primary big" id="startBtn" disabled>자동 편집 시작</button>
+  </section>
+
+  <section class="history">
+    <h2>최근 프로젝트</h2>
+    <div class="history-grid" id="historyGrid"></div>
+  </section>
+</main>
+
+<!-- ======================= PROCESSING ======================= -->
+<main id="processView" class="view hidden">
+  <div class="process-card">
+    <div class="spinner"></div>
+    <h2 id="procStatus">업로드 중…</h2>
+    <div class="progress"><div class="progress-bar" id="procBar"></div></div>
+    <div class="proc-pct" id="procPct">0%</div>
+    <ol class="steps" id="procSteps">
+      <li data-step="upload">업로드</li>
+      <li data-step="analyzing">무음·컷 분석</li>
+      <li data-step="transcribing">음성 인식 · 자막</li>
+      <li data-step="rendering">효과 적용 · 렌더링</li>
+    </ol>
+  </div>
+</main>
+
+<!-- ======================= EDITOR ======================= -->
+<main id="editorView" class="view hidden">
+  <div class="editor">
+    <aside class="sidebar">
+      <nav class="tabs" id="tabs">
+        <button data-tab="captions" class="active">자막</button>
+        <button data-tab="effects">효과</button>
+        <button data-tab="audio">오디오</button>
+        <button data-tab="cuts">자동 컷</button>
+      </nav>
+      <div class="tab-body" id="tabBody"></div>
+    </aside>
+
+    <section class="stage">
+      <div class="stage-toolbar">
+        <div class="seg-toggle" id="previewModeToggle">
+          <button data-mode="edit" class="active">편집 미리보기</button>
+          <button data-mode="output">완성본</button>
+        </div>
+        <div class="stage-info" id="stageInfo"></div>
+      </div>
+      <div class="player-wrap" id="playerWrap">
+        <div class="frame" id="frame">
+          <video id="bgVideo" class="bg-video" muted playsinline preload="auto"></video>
+          <div class="video-clip"><video id="video" playsinline preload="auto"></video></div>
+          <div class="overlay-title" id="overlayTitle"></div>
+          <div class="overlay-caption" id="overlayCaption"></div>
+        </div>
+        <video id="outVideo" class="out-video hidden" controls playsinline></video>
+      </div>
+      <div class="transport">
+        <button class="icon-btn" id="playBtn" title="재생 (Space)">▶</button>
+        <span class="time" id="timeLabel">0:00.0 / 0:00.0</span>
+        <span class="spacer"></span>
+        <span class="hint">Space 재생 · S 자르기 · Del 구간 삭제</span>
+      </div>
+    </section>
+
+    <aside class="export-panel" id="exportPanel"></aside>
+  </div>
+
+  <section class="timeline-area">
+    <div class="timeline-tools">
+      <button class="btn small" id="splitBtn" title="재생 위치에서 자르기 (S)">✂ 자르기</button>
+      <button class="btn small" id="toggleKeepBtn" title="선택 구간 삭제/복원 (Del)">🗑 삭제/복원</button>
+      <button class="btn small" id="toggleZoomBtn" title="선택 구간 줌인">🔍 줌인</button>
+      <button class="btn small" id="addCaptionBtn">＋ 자막 추가</button>
+      <span class="spacer"></span>
+      <label class="zoom-ctl">타임라인 확대 <input type="range" id="pxPerSec" min="10" max="300" value="60"></label>
+    </div>
+    <div class="timeline-scroll" id="timelineScroll">
+      <div class="timeline" id="timeline">
+        <div class="ruler" id="ruler"></div>
+        <div class="track video-track" id="segTrack"></div>
+        <div class="track caption-track" id="capTrack"></div>
+        <div class="playhead" id="playhead"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="toast hidden" id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>
